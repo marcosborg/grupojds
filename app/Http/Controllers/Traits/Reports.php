@@ -221,7 +221,7 @@ trait Reports
 
             //CAR TRACK
             $car_track = CarTrack::where([
-                'license_plate' => $driver->vehicle ? $driver->vehicle->license_plate : '',
+                'license_plate' => $driver->license_plate,
                 'tvde_week_id' => $tvde_week_id
             ])->sum('value');
 
