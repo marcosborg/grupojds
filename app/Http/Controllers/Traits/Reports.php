@@ -33,6 +33,7 @@ trait Reports
 
         $drivers = Driver::where('company_id', $company_id)
             ->where('state_id', 1)
+            ->where('id', 571)
             ->orderBy('name')
             ->get()
             ->load([
@@ -185,24 +186,32 @@ trait Reports
             $company_expense = [];
 
             foreach ($adjustments_array as $adjustment) {
-                if ($adjustment->type == 'deduct') {
-                    if ($adjustment->fleet_management) {
-                        $fleet_management[] = $adjustment->amount;
+                if ($adjustment->percent) {
+                    if ($adjustment->type == 'deduct') {
+                        $deducts[] = $net_total - ($net_total * ($adjustment->percent / 100));
                     } else {
-                        $deducts[] = $adjustment->amount;
+                        $refunds[] = $net_total + ($net_total * ($adjustment->percent / 100));
                     }
                 } else {
-                    if ($adjustment->fleet_management) {
-                        $fleet_management[] = (-$adjustment->amount);
-                    } else {
-                        $refunds[] = $adjustment->amount;
-                    }
-                }
-                if ($adjustment->company_expense) {
                     if ($adjustment->type == 'deduct') {
-                        $company_expense[] = -$adjustment->amount;
+                        if ($adjustment->fleet_management) {
+                            $fleet_management[] = $adjustment->amount;
+                        } else {
+                            $deducts[] = $adjustment->amount;
+                        }
                     } else {
-                        $company_expense[] = $adjustment->amount;
+                        if ($adjustment->fleet_management) {
+                            $fleet_management[] = (-$adjustment->amount);
+                        } else {
+                            $refunds[] = $adjustment->amount;
+                        }
+                    }
+                    if ($adjustment->company_expense) {
+                        if ($adjustment->type == 'deduct') {
+                            $company_expense[] = -$adjustment->amount;
+                        } else {
+                            $company_expense[] = $adjustment->amount;
+                        }
                     }
                 }
             }

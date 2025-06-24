@@ -212,7 +212,11 @@
                         </td>
                         <td style="text-align: right">{{ number_format($driver->adjustments, 2) }} <small>€</small><button class="btn btn-sm" data-toggle="popover" title="Adjustments" data-html="true" data-content="
                             @foreach($driver->earnings['adjustments_array'] as $adjustment)
-                                <strong>{{ $adjustment['name'] }}: </strong>{{ $adjustment['type'] == 'deduct' ? '-' : '' }}{{ $adjustment['amount'] }}€<br>
+                            @if($adjustment['percent'])
+                            <strong>{{ $adjustment['name'] }}: </strong>{{ $adjustment['type'] == 'deduct' ? '-' : '' }}{{ $adjustment['percent'] }}%<br>
+                            @else
+                            <strong>{{ $adjustment['name'] }}: </strong>{{ $adjustment['type'] == 'deduct' ? '-' : '' }}{{ $adjustment['amount'] }}€<br>
+                            @endif
                             @endforeach
                             "><i class="fa-fw fas fa-eye"></i></button></td>
                         <td style="text-align: right">{{ number_format($driver->earnings['car_track'], 2) }} <small>€</small></td>
