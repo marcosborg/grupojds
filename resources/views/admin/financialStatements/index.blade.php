@@ -5,10 +5,6 @@
     <div class="alert alert-info" role="alert">
         Selecione uma empresa para ver os seus extratos.
     </div>
-    @elseif ($driver_id == 0)
-    <div class="alert alert-info" role="alert">
-        Selecione um motorista para ver o extrato.
-    </div>
     @else
     <div class="btn-group btn-group-justified" role="group">
         @foreach ($tvde_years as $tvde_year)
@@ -35,6 +31,11 @@
     <a href="/admin/financial-statements/driver/{{ $d->id }}" class="btn btn-default {{ $driver_id == $d->id ? 'disabled selected' : '' }}" style="margin-top: 5px;">{{
         $d->name }} {{ $d->team->count() > 0 ? '(Team)' : '' }}</a>
     @endforeach
+    @if ($driver_id == 0)
+    <div class="alert alert-info" role="alert" style="margin-top: 10px;">
+        Selecione um motorista para ver o extrato.
+    </div>
+    @else
     <div class="row" style="margin-top: 5px;">
         <div class="col-md-5">
             <div class="panel panel-default">
@@ -175,6 +176,7 @@
             </div>
         </div>
     </div>
+    @endif
     @endif
 </div>
 </div>
