@@ -43,7 +43,12 @@ trait Reports
                 'cards'
             ]);
 
+        $gross_uber = [];
+        $gross_bolt = [];
+        $net_uber = [];
+        $net_bolt = [];
         $total_operators = [];
+        $total_net_operators = [];
         $total_earnings_after_discount = [];
         $total_fuel_transactions = [];
         $total_adjustments = [];
@@ -567,7 +572,7 @@ trait Reports
 
     public function filter()
     {
-        $company_id = 1;
+        $company_id = 28;
         $tvde_year_id = session()->get('tvde_year_id') ? session()->get('tvde_year_id') : $tvde_year_id = TvdeYear::orderBy('name', 'desc')->first()->id;
         if (session()->has('tvde_month_id')) {
             $tvde_month_id = session()->get('tvde_month_id');
