@@ -45,11 +45,6 @@ class FinancialStatementController extends Controller
 
         $driver_id = session()->get('driver_id') ? session()->get('driver_id') : $driver_id = 0;
 
-        if (!session()->has('company_id')) {
-            $company_id = 27;
-            session()->put('company_id', $company_id);
-        }
-
         if ($driver_id != 0) {
 
             $results = CurrentAccount::where([
