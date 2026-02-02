@@ -1,9 +1,5 @@
 <?php
 
-Route::get('link', function() {
-    Artisan::call('storage:link');
-});
-
 Route::redirect('/', '/admin');
 
 //Route::get('/', 'WebsiteController@index');

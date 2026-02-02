@@ -43,10 +43,10 @@ class FinancialStatementController extends Controller
         $tvde_weeks = $filter['tvde_weeks'];
         $drivers = $filter['drivers'];
 
-        $driver_id = session()->get('driver_id') ? session()->get('driver_id') : $driver_id = 0;
+        $driver_id = session()->get('driver_id') ? session()->get('driver_id') : 0;
+        $results = null;
 
-        if ($driver_id != 0) {
-
+        if ($driver_id != 0 && $tvde_week_id) {
             $results = CurrentAccount::where([
                 'tvde_week_id' => $tvde_week_id,
                 'driver_id' => $driver_id
@@ -55,16 +55,15 @@ class FinancialStatementController extends Controller
             if ($results) {
                 $results = json_decode($results->data);
             }
-
-        } else {
-            session()->put('driver_id', 540);
-            return redirect()->back();
         }
 
-        $driver_balance = DriversBalance::where([
-            'driver_id' => $driver_id,
-            'tvde_week_id' => $tvde_week_id
-        ])->first();
+        $driver_balance = null;
+        if ($driver_id != 0 && $tvde_week_id) {
+            $driver_balance = DriversBalance::where([
+                'driver_id' => $driver_id,
+                'tvde_week_id' => $tvde_week_id
+            ])->first();
+        }
 
         return view('admin.financialStatements.index')->with([
             'company_id' => $company_id,
@@ -127,54 +126,44 @@ class FinancialStatementController extends Controller
         $driver_id = session()->get('driver_id');
         $company_id = session()->get('company_id');
 
-        $driver = Driver::find($driver_id);
-        $company = Company::find($company_id);
+        if (!$company_id || !$tvde_week_id || !$driver_id) {
+            return back()->with('message', 'Selecione uma empresa, semana e motorista antes de gerar o PDF.');
+        }
 
+        $company = Company::find($company_id);
         $tvde_week = TvdeWeek::find($tvde_week_id);
 
-        $bolt_activities = TvdeActivity::where([
-            'tvde_week_id' => $tvde_week_id,
-            'tvde_operator_id' => 2,
-            'driver_code' => $driver->bolt_name,
-            'company_id' => $company_id,
-        ])
-            ->get();
+        $weekReport = $this->getWeekReport($company_id, $tvde_week_id);
+        $driver = $weekReport['drivers']->firstWhere('id', (int) $driver_id);
 
-        $uber_activities = TvdeActivity::where([
-            'tvde_week_id' => $tvde_week_id,
-            'tvde_operator_id' => 1,
-            'driver_code' => $driver->uber_uuid,
-            'company_id' => $company_id,
-        ])
-            ->get();
-
-        $adjustments = Adjustment::whereHas('drivers', function ($query) use ($driver_id) {
-            $query->where('id', $driver_id);
-        })
-            ->where('company_id', $company_id)
-            ->where(function ($query) use ($tvde_week) {
-                $query->where('start_date', '<=', $tvde_week->start_date)
-                    ->orWhereNull('start_date');
-            })
-            ->where(function ($query) use ($tvde_week) {
-                $query->where('end_date', '>=', $tvde_week->end_date)
-                    ->orWhereNull('end_date');
-            })
-            ->get();
-
-        $refund = 0;
-        $deduct = 0;
-
-        foreach ($adjustments as $adjustment) {
-            switch ($adjustment->type) {
-                case 'refund':
-                    $refund = $refund + $adjustment->amount;
-                    break;
-                case 'deduct':
-                    $deduct = $deduct + $adjustment->amount;
-                    break;
-            }
+        if (!$driver || !$company || !$tvde_week) {
+            abort(404);
         }
+
+        $earningsData = $driver->earnings;
+
+        $uberTips = (float) ($earningsData['uber']['uber_gross'] ?? 0);
+        $boltTips = (float) ($earningsData['bolt']['bolt_gross'] ?? 0);
+        $uberNet = (float) ($earningsData['uber']['uber_net'] ?? 0);
+        $boltNet = (float) ($earningsData['bolt']['bolt_net'] ?? 0);
+
+        $total_earnings_uber = number_format($uberNet - $uberTips, 2, '.', '');
+        $total_earnings_bolt = number_format($boltNet - $boltTips, 2, '.', '');
+        $total_tips_uber = number_format($uberTips, 2, '.', '');
+        $total_tips_bolt = number_format($boltTips, 2, '.', '');
+        $total_tips = (float) $total_tips_uber + (float) $total_tips_bolt;
+        $uber_net = $uberNet;
+        $bolt_net = $boltNet;
+        $total_net = (float) ($earningsData['total_net'] ?? ($uberNet + $boltNet));
+        $total_gross = (float) ($earningsData['total_gross'] ?? ($uberTips + $boltTips));
+        $vat_value = (float) ($earningsData['vat_value'] ?? 0);
+        $total_after_vat = (float) ($earningsData['total_after_vat'] ?? 0);
+        $fuel_transactions = (float) ($earningsData['fuel_transactions'] ?? 0);
+        $car_track = (float) ($earningsData['car_track'] ?? 0);
+        $car_hire = (float) ($earningsData['car_hire'] ?? 0);
+        $company_expense = (float) ($earningsData['company_expense'] ?? 0);
+        $adjustments_total = (float) ($earningsData['adjustments'] ?? 0);
+        $total_to_pay = (float) ($earningsData['total'] ?? 0);
 
         // FUEL EXPENSES
 
@@ -212,124 +201,19 @@ class FinancialStatementController extends Controller
             ]);
         }
 
-        $total_earnings_bolt = number_format($bolt_activities->sum('net') - $bolt_activities->sum('gross'), 2, '.', '');
-        $total_tips_bolt = number_format($bolt_activities->sum('gross'), 2);
-        $total_earnings_uber = number_format($uber_activities->sum('net') - $uber_activities->sum('gross'), 2, '.', '');
-        $total_tips_uber = number_format($uber_activities->sum('gross'), 2);
-        $total_tips = $total_tips_uber + $total_tips_bolt;
-        $total_earnings = $bolt_activities->sum('net') + $uber_activities->sum('net');
-        $total_earnings_no_tip = ($bolt_activities->sum('net') - $bolt_activities->sum('gross')) + ($uber_activities->sum('net') - $uber_activities->sum('gross'));
-
-        //CHECK PERCENT
-        $contract_type_ranks = $driver ? ContractTypeRank::where('contract_type_id', $driver->contract_type_id)->get() : [];
-        $contract_type_rank = count($contract_type_ranks) > 0 ? $contract_type_ranks[0] : null;
-        foreach ($contract_type_ranks as $value) {
-            if ($value->from <= $total_earnings && $value->to >= $total_earnings) {
-                $contract_type_rank = $value;
-            }
-        }
-        //
-
-        $total_bolt = number_format(($bolt_activities->sum('net') - $bolt_activities->sum('gross')) * ($contract_type_rank ? $contract_type_rank->percent / 100 : 0), 2, '.', '');
-        $total_uber = number_format(($uber_activities->sum('net') - $uber_activities->sum('gross')) * ($contract_type_rank ? $contract_type_rank->percent / 100 : 0), 2, '.', '');
-
-        $total_earnings_after_vat = $total_bolt + $total_uber;
-
-        $bolt_tip_percent = $driver ? 100 - $driver->contract_vat->tips : 100;
-        $uber_tip_percent = $driver ? 100 - $driver->contract_vat->tips : 100;
-
-        $bolt_tip_after_vat = number_format($total_tips_bolt * ($bolt_tip_percent / 100), 2);
-        $uber_tip_after_vat = number_format($total_tips_uber * ($uber_tip_percent / 100), 2);
-
-        $total_tip_after_vat = $bolt_tip_after_vat + $uber_tip_after_vat;
-
-        $total = $total_earnings + $total_tips;
-        $total_after_vat = $total_earnings_after_vat + $total_tip_after_vat;
-
-        $gross_credits = $total_earnings_no_tip + $total_tips + $refund;
-        $gross_debts = ($total_earnings_no_tip - $total_earnings_after_vat) + ($total_tips - $total_tip_after_vat) + $deduct;
-
-        $final_total = $gross_credits - $gross_debts;
-
-        $electric_racio = null;
-        $combustion_racio = null;
-
-        if ($electric_expenses && $total_earnings > 0) {
-            $final_total = $final_total - $electric_expenses['value'];
-            $gross_debts = $gross_debts + $electric_expenses['value'];
-            if ($electric_expenses['value'] > 0) {
-                $electric_racio = ($electric_expenses['value'] / $total_earnings) * 100;
-            } else {
-                $electric_racio = 0;
-            }
-        }
-        if ($combustion_expenses && $total_earnings > 0) {
-            $final_total = $final_total - $combustion_expenses['value'];
-            $gross_debts = $gross_debts + $combustion_expenses['value'];
-            if ($combustion_expenses['value'] > 0) {
-                $combustion_racio = ($combustion_expenses['value'] / $total_earnings) * 100;
-            } else {
-                $combustion_racio = 0;
-            }
-        }
-
-        if ($driver->contract_vat->percent && $driver->contract_vat->percent > 0) {
-            $txt_admin = ($final_total * $driver->contract_vat->percent) / 100;
-            $gross_debts = $gross_debts + $txt_admin;
-            $final_total = $final_total - $txt_admin;
-        } else {
-            $txt_admin = 0;
-        }
-
         //GRAFICOS
 
-        $drivers = Driver::where('company_id', $company_id)->get();
+        $labels = [];
+        $earnings = [];
 
-        $team_earnings = collect();
-
-        foreach ($drivers as $key => $d) {
-            $team_driver_bolt_earnings = TvdeActivity::where([
-                'tvde_week_id' => $tvde_week_id,
-                'tvde_operator_id' => 2,
-                'driver_code' => $d->bolt_name
-            ])
-                ->get()->sum('net');
-
-            $team_driver_uber_earnings = TvdeActivity::where([
-                'tvde_week_id' => $tvde_week_id,
-                'tvde_operator_id' => 1,
-                'driver_code' => $d->uber_uuid
-            ])
-                ->get()->sum('net');
-
-            $team_driver_earnings = $team_driver_bolt_earnings + $team_driver_uber_earnings;
-            if ($driver) {
-                $entry = collect([
-                    'driver' => $driver->uber_uuid == $d->uber_uuid || $driver->bolt_name == $d->bolt_name ? $driver->name : 'Motorista ' . $key + 1,
-                    'earnings' => sprintf("%.2f", $team_driver_earnings),
-                    'own' => $driver->uber_uuid == $d->uber_uuid || $driver->bolt_name == $d->bolt_name
-                ]);
-                $team_earnings->add($entry);
-            }
-
-            $labels = [];
-            $earnings = [];
-            $backgrounds = [];
-
-            foreach ($team_earnings as $entry) {
-                $labels[] = $entry['driver'];
-                $earnings[] = $entry['earnings'];
-                if ($entry['own']) {
-                    $backgrounds[] = '#605ca8';
-                } else {
-                    $backgrounds[] = '#00a65a94';
-                }
-            }
-
+        foreach ($weekReport['drivers']->values() as $key => $d) {
+            $isOwn = $d->id == $driver->id;
+            $labels[] = $isOwn ? $driver->name : 'Motorista ' . ($key + 1);
+            $earnings[] = number_format((float) ($d->earnings['total'] ?? 0), 2, '.', '');
         }
 
         $chart1 = "https://quickchart.io/chart?c={type:'bar',data:{labels:" . json_encode($labels) . ",datasets:[{borderWidth: 1, label:'Valor faturado',data:" . json_encode($earnings) . "}]}}";
-        $chart2 = "https://quickchart.io/chart?c={type:'doughnut',data:{labels:['UBER', 'BOLT', 'GORJETAS'],datasets:[{label: 'Valor faturado', data: [" . $total_earnings_uber . ", " . $total_earnings_bolt . ", " . $total_tips . "]}]}}";
+        $chart2 = "https://quickchart.io/chart?c={type:'doughnut',data:{labels:['UBER', 'BOLT', 'GORJETAS'],datasets:[{label: 'Valor faturado', data: [" . $total_earnings_uber . ", " . $total_earnings_bolt . ", " . number_format($total_tips, 2, '.', '') . "]}]}}";
 
         /*
 
@@ -382,41 +266,31 @@ class FinancialStatementController extends Controller
             'tvde_week_id' => $tvde_week_id,
             'tvde_week' => $tvde_week,
             'driver_id' => $driver_id,
-            'bolt_activities' => $bolt_activities,
-            'uber_activities' => $uber_activities,
             'total_earnings_uber' => $total_earnings_uber,
-            'contract_type_rank' => $contract_type_rank,
-            'total_uber' => $total_uber,
             'total_earnings_bolt' => $total_earnings_bolt,
-            'total_bolt' => $total_bolt,
             'total_tips_uber' => $total_tips_uber,
-            'uber_tip_percent' => $uber_tip_percent,
-            'uber_tip_after_vat' => $uber_tip_after_vat,
             'total_tips_bolt' => $total_tips_bolt,
-            'bolt_tip_percent' => $bolt_tip_percent,
-            'bolt_tip_after_vat' => $bolt_tip_after_vat,
             'total_tips' => $total_tips,
-            'total_tip_after_vat' => $total_tip_after_vat,
-            'adjustments' => $adjustments,
-            'total_earnings' => $total_earnings,
-            'total_earnings_no_tip' => $total_earnings_no_tip,
-            'total' => $total,
-            'total_after_vat' => $total_after_vat,
-            'gross_credits' => $gross_credits,
-            'gross_debts' => $gross_debts,
-            'final_total' => $final_total,
             'driver' => $driver,
             'electric_expenses' => $electric_expenses,
             'combustion_expenses' => $combustion_expenses,
-            'combustion_racio' => $combustion_racio,
-            'electric_racio' => $electric_racio,
-            'total_earnings_after_vat' => $total_earnings_after_vat,
-            'txt_admin' => $txt_admin,
-            'team_earnings' => $team_earnings,
+            'uber_net' => $uber_net,
+            'bolt_net' => $bolt_net,
+            'total_net' => $total_net,
+            'total_gross' => $total_gross,
+            'vat_value' => $vat_value,
+            'total_after_vat' => $total_after_vat,
+            'fuel_transactions' => $fuel_transactions,
+            'car_track' => $car_track,
+            'car_hire' => $car_hire,
+            'company_expense' => $company_expense,
+            'adjustments_total' => $adjustments_total,
+            'total_to_pay' => $total_to_pay,
             'chart1' => $chart1,
             'chart2' => $chart2,
         ])->setOption([
                     'isRemoteEnabled' => true,
+                    'defaultFont' => 'DejaVu Sans',
                 ]);
 
 

@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <meta charset="UTF-8" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>Extrato</title>
     <style>
@@ -84,6 +85,7 @@
             </tr>
         </tbody>
     </table>
+
     <table>
         <tbody>
             <tr>
@@ -91,68 +93,55 @@
                     <table class="bordered">
                         <thead>
                             <tr>
-                                <th colspan="4" style="text-align: left; text-transform: uppercase;">Atividades por
-                                    operador</th>
+                                <th colspan="4" style="text-align: left; text-transform: uppercase;">Atividades por operador</th>
+                            </tr>
+                            <tr>
+                                <th style="text-align: left;"></th>
+                                <th style="text-align: right;">Ganhos</th>
+                                <th style="text-align: right;">Gorjetas</th>
+                                <th style="text-align: right;">Total</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <th style="text-align: left;">UBER</th>
-                                <td style="text-align: right;">{{ $total_earnings_uber }}€</td>
-                                @if ($driver)
-                                <td style="text-align: right;">{{ $contract_type_rank ? $contract_type_rank->percent :
-                                    '' }}%</td>
-                                <td style="text-align: right;">{{ $total_uber }}€</td>
-                                @endif
+                                <td style="text-align: right;">{{ $total_earnings_uber }}&euro;</td>
+                                <td style="text-align: right;">{{ $total_tips_uber }}&euro;</td>
+                                <td style="text-align: right;">{{ number_format($uber_net, 2, '.', '') }}&euro;</td>
                             </tr>
                             <tr>
                                 <th style="text-align: left;">BOLT</th>
-                                <td style="text-align: right;">{{ $total_earnings_bolt }}€</td>
-                                @if ($driver)
-                                <td style="text-align: right;">{{ $contract_type_rank ? $contract_type_rank->percent :
-                                    '' }}%</td>
-                                <td style="text-align: right;">{{ $total_bolt }}€</td>
-                                @endif
+                                <td style="text-align: right;">{{ $total_earnings_bolt }}&euro;</td>
+                                <td style="text-align: right;">{{ $total_tips_bolt }}&euro;</td>
+                                <td style="text-align: right;">{{ number_format($bolt_net, 2, '.', '') }}&euro;</td>
                             </tr>
                             <tr>
-                                <th style="text-align: left;">Gorjeta UBER</th>
-                                <td style="text-align: right;">{{ $total_tips_uber }}€</td>
-                                @if ($driver)
-                                <td style="text-align: right;">{{ $uber_tip_percent }}%</td>
-                                <td style="text-align: right;">{{ $uber_tip_after_vat }}€</td>
-                                @endif
+                                <th style="text-align: left;">Total</th>
+                                <th style="text-align: right;">{{ number_format(((float)$total_earnings_uber + (float)$total_earnings_bolt), 2, '.', '') }}&euro;</th>
+                                <th style="text-align: right;">{{ number_format($total_gross, 2, '.', '') }}&euro;</th>
+                                <th style="text-align: right;">{{ number_format($total_net, 2, '.', '') }}&euro;</th>
                             </tr>
                             <tr>
-                                <th style="text-align: left;">Gorjeta BOLT</th>
-                                <td style="text-align: right;">{{ $total_tips_bolt }}€</td>
-                                @if ($driver)
-                                <td style="text-align: right;">{{ $bolt_tip_percent }}%</td>
-                                <td style="text-align: right;">{{ $bolt_tip_after_vat }}€</td>
-                                @endif
-                            </tr>
-                            <tr style="text-align: left;">
-                                <th style="text-align: left;">Totais</th>
-                                <td style="text-align: right;">{{ $total_earnings }}€</td>
-                                @if ($driver)
+                                <th style="text-align: left;">IVA</th>
                                 <td></td>
-                                <td style="text-align: right;">{{ $total_after_vat }}€</td>
-                                @endif
+                                <td style="text-align: right;">- {{ number_format($vat_value, 2, '.', '') }}&euro;</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <th style="text-align: left;">Total após IVA</th>
+                                <td></td>
+                                <td></td>
+                                <th style="text-align: right;">{{ number_format($total_after_vat, 2, '.', '') }}&euro;</th>
                             </tr>
                         </tbody>
                     </table>
-                    @if (($electric_expenses && $electric_expenses['value'] > 0) || ($combustion_expenses &&
-                    $combustion_expenses['value'] > 0))
+
                     <table class="bordered" style="margin-top: 20px;">
                         <thead>
                             <tr>
                                 <th style="text-transform: uppercase; text-align: left" colspan="3">
                                     Abastecimento
-                                    <small style="float: right">
-                                        {{ $electric_expenses ? 'Rentabilidade: ' . number_format($electric_racio, 2) .
-                                        '%' : '' }}
-                                        {{ $combustion_expenses ? 'Rentabilidade: ' . number_format($combustion_racio,
-                                        2) . '%' : '' }}
-                                    </small>
+                                    <small style="float: right">Total: {{ number_format($fuel_transactions, 2, '.', '') }}&euro;</small>
                                 </th>
                             </tr>
                         </thead>
@@ -164,109 +153,72 @@
                             </tr>
                             @if ($electric_expenses)
                             <tr>
-                                <th style="text-align: left;">Gastos</th>
+                                <th style="text-align: left;">Elétrico</th>
                                 <td style="text-align: right;">{{ $electric_expenses['amount'] }}</td>
                                 <td style="text-align: right;">{{ $electric_expenses['total'] }}</td>
                             </tr>
                             @endif
                             @if ($combustion_expenses)
                             <tr>
-                                <th style="text-align: left;">Gastos</th>
+                                <th style="text-align: left;">Combustível</th>
                                 <td style="text-align: right;">{{ $combustion_expenses['amount'] }}</td>
                                 <td style="text-align: right;">{{ $combustion_expenses['total'] }}</td>
                             </tr>
                             @endif
                         </tbody>
                     </table>
-                    @endif
                 </td>
+
                 <td style="vertical-align: top; width: 50%;">
                     <table class="bordered">
                         <thead>
                             <tr>
-                                <th colspan="4" style="text-align: left; text-transform: uppercase;">Totais</th>
+                                <th colspan="3" style="text-align: left; text-transform: uppercase;">Cálculo</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <th></th>
-                                <th style="text-align: right;">Créditos</th>
-                                @if ($driver)
-                                <th style="text-align: right;">Débitos</th>
-                                <th style="text-align: right;">Totais</th>
-                                @endif
+                                <th style="text-align: left;">Total após IVA</th>
+                                <td></td>
+                                <td style="text-align: right;">{{ number_format($total_after_vat, 2, '.', '') }}&euro;</td>
                             </tr>
                             <tr>
-                                <th style="text-align: left;">Ganhos</th>
-                                <td style="text-align: right;">{{ $total_earnings_no_tip }}€</td>
-                                @if ($driver)
-                                <td style="text-align: right;">- {{ $total_earnings_no_tip - $total_earnings_after_vat
-                                    }}€</td>
-                                <td style="text-align: right;">{{ number_format($total_earnings_after_vat, 2) }}€</td>
-                                @endif
+                                <th style="text-align: left;">Abastecimento</th>
+                                <td style="text-align: right;">-</td>
+                                <td style="text-align: right;">{{ number_format($fuel_transactions, 2, '.', '') }}&euro;</td>
                             </tr>
                             <tr>
-                                <th style="text-align: left;">Gorjetas</th>
-                                <td style="text-align: right;">{{ number_format($total_tips, 2) }}€</td>
-                                @if ($driver)
-                                <td style="text-align: right;">- {{ number_format($total_tips - $total_tip_after_vat, 2)
-                                    }}€</td>
-                                <td style="text-align: right;">{{ $total_tip_after_vat }}€</td>
-                                @endif
+                                <th style="text-align: left;">Ajustamentos</th>
+                                <td style="text-align: right;">{{ $adjustments_total >= 0 ? '+' : '-' }}</td>
+                                <td style="text-align: right;">{{ number_format(abs($adjustments_total), 2, '.', '') }}&euro;</td>
                             </tr>
-                            @if ($electric_expenses && $electric_expenses['value'] > 0)
                             <tr>
-                                <th style="text-align: left;">Abastecimento elétrico</th>
-                                <td></td>
-                                @if ($driver)
-                                <td style="text-align: right;">- {{ $electric_expenses['total'] }}</td>
-                                <td></td>
-                                @endif
+                                <th style="text-align: left;">Car Track</th>
+                                <td style="text-align: right;">-</td>
+                                <td style="text-align: right;">{{ number_format($car_track, 2, '.', '') }}&euro;</td>
                             </tr>
-                            @endif
-                            @if ($combustion_expenses && $combustion_expenses['value'] > 0)
                             <tr>
-                                <th style="text-align: left;">Abastecimento combustivel</th>
-                                <td></td>
-                                @if ($driver)
-                                <td style="text-align: right;">- {{ $combustion_expenses['total'] }}</td>
-                                <td></td>
-                                @endif
+                                <th style="text-align: left;">Aluguer</th>
+                                <td style="text-align: right;">-</td>
+                                <td style="text-align: right;">{{ number_format($car_hire, 2, '.', '') }}&euro;</td>
                             </tr>
-                            @endif
-                            @foreach ($adjustments as $adjustment)
                             <tr>
-                                <th style="text-align: left;">{{ $adjustment->name }}</th>
-                                <td style="text-align: right;">{{ $adjustment->type == 'refund' ? '' .
-                                    $adjustment->amount . '€' : '' }}</td>
-                                <td style="text-align: right;">{{ $adjustment->type == 'deduct' ? '- ' .
-                                    $adjustment->amount . '€' : '' }}</td>
-                                <td></td>
+                                <th style="text-align: left;">Despesa empresa</th>
+                                <td style="text-align: right;">-</td>
+                                <td style="text-align: right;">{{ number_format($company_expense, 2, '.', '') }}&euro;</td>
                             </tr>
-                            @endforeach
-                            @if ($txt_admin > 0)
                             <tr>
-                                <th style="text-align: left;">Taxa administrativa</th>
-                                <td></td>
-                                <td style="text-align: right;">- {{ number_format($txt_admin, 2) }}€</td>
-                                <td></td>
-                            </tr>
-                            @endif
-                            <tr>
-                                <th style="text-align: left;">Totais</th>
-                                <th style="text-align: right;">{{ number_format($gross_credits, 2) }}€</th>
-                                @if ($driver)
-                                <th style="text-align: right;">- {{ number_format($gross_debts, 2) }}€</th>
-                                <th style="text-align: right;">{{ number_format($final_total, 2) }}€</th>
-                                @endif
+                                <th style="text-align: left;">Valor a pagar</th>
+                                <th colspan="2" style="text-align: right;">{{ number_format($total_to_pay, 2, '.', '') }}&euro;</th>
                             </tr>
                         </tbody>
                     </table>
+
                     <table class="bordered" style="margin-top: 20px;">
                         <tbody>
                             <tr>
                                 <td style="text-align: center; background: #eeeeee;">
-                                    <h2>Valor a pagar: {{ number_format($final_total, 2) }}€</h2>
+                                    <h2>Valor a pagar: {{ number_format($total_to_pay, 2, '.', '') }}&euro;</h2>
                                 </td>
                             </tr>
                         </tbody>
@@ -275,6 +227,7 @@
             </tr>
         </tbody>
     </table>
+
     <table>
         <tr>
             <td style="vertical-align: top;">
@@ -309,9 +262,11 @@
             </td>
         </tr>
     </table>
+
     <footer>
-        Tribos&Montanhas ©
+        Tribos&Montanhas &copy;
         <?php echo date("Y");?>
     </footer>
 </body>
+
 </html>

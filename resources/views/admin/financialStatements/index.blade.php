@@ -5,6 +5,10 @@
     <div class="alert alert-info" role="alert">
         Selecione uma empresa para ver os seus extratos.
     </div>
+    @elseif ($driver_id == 0)
+    <div class="alert alert-info" role="alert">
+        Selecione um motorista para ver o extrato.
+    </div>
     @else
     <div class="btn-group btn-group-justified" role="group">
         @foreach ($tvde_years as $tvde_year)
