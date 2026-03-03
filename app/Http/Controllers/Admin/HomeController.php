@@ -57,16 +57,18 @@ class HomeController
         ])->first();
 
         if($driver_balance) {
-            
-            $factor = $driver->contract_vat->iva / 100;
-            $iva = number_format($driver_balance->value * $factor, 2);
+            $balanceValue = (float) $driver_balance->value;
+            $balanceBase = (float) $driver_balance->balance;
+
+            $ivaFactor = (float) optional($driver->contract_vat)->iva / 100;
+            $iva = round($balanceValue * $ivaFactor, 2);
             $driver_balance->iva = $iva;
-    
-            $factor = $driver->contract_vat->rf / 100;
-            $rf = number_format(-($driver_balance->value * $factor), 2);
-            $driver_balance ? $driver_balance->rf = $rf ?? 0 : 0;
-    
-            $final = number_format($driver_balance->balance + $iva + $rf, 2);
+
+            $rfFactor = (float) optional($driver->contract_vat)->rf / 100;
+            $rf = round(-($balanceValue * $rfFactor), 2);
+            $driver_balance->rf = $rf;
+
+            $final = round($balanceBase + $iva + $rf, 2);
             $driver_balance->final = $final;
     
             //VERIFICAR RECIBOS DE DESPESAS
@@ -77,7 +79,7 @@ class HomeController
             ])->first();
     
             if($expenseReceipt && $expenseReceipt->verified) {
-                $driver_balance->final = $driver_balance->final - $expenseReceipt->approved_value;
+                $driver_balance->final = round($driver_balance->final - (float) $expenseReceipt->approved_value, 2);
             }
         }
 

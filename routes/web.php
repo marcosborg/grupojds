@@ -410,6 +410,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
         Route::get('/', 'CompanyReportController@index')->name('company-reports.index');
         Route::post('validate-data', 'CompanyReportController@validateData');
         Route::post('revalidate-data', 'CompanyReportController@revalidateData');
+        Route::post('delete-validation', 'CompanyReportController@deleteValidation');
     });
 
     // Company Park

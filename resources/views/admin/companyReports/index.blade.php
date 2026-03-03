@@ -34,6 +34,27 @@
         color: #00a65a;
     }
 
+    .btn-delete-validation {
+        color: #dd4b39;
+        cursor: pointer;
+    }
+
+    .validation-cell .checkbox {
+        margin: 0;
+    }
+
+    .validation-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .validation-label input[type="checkbox"] {
+        margin: 0;
+        position: relative;
+        top: 0;
+    }
+
 </style>
 @endsection
 @section('scripts')
@@ -69,6 +90,55 @@
         });
     }
 
+        function deleteValidation(driverId, driverName) {
+        Swal.fire({
+            title: 'Reverter validacao?',
+            text: 'Isto vai remover a validacao do motorista ' + driverName + ' nesta semana.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, reverter',
+            cancelButtonText: 'Cancelar'
+        }).then(function (result) {
+            if (!result.isConfirmed) {
+                return;
+            }
+
+            $.post({
+                url: '/admin/company-reports/delete-validation',
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                data: {
+                    driver_id: driverId,
+                    tvde_week_id: {{ session()->get('tvde_week_id') }}
+                },
+                success: function () {
+                    Swal.fire('Validacao revertida com sucesso.').then(function () {
+                        location.reload();
+                    });
+                },
+                error: function (error) {
+                    var message = 'Nao foi possivel reverter a validacao.';
+
+                    if (error && error.responseJSON && error.responseJSON.message) {
+                        message = error.responseJSON.message;
+                    }
+
+                    Swal.fire({
+                        title: 'Erro',
+                        text: message,
+                        icon: 'error'
+                    });
+                }
+            });
+        });
+    }
+
+    function deleteValidationFromElement(element) {
+        var driverId = element.getAttribute('data-driver-id');
+        var driverName = element.getAttribute('data-driver-name') || 'motorista';
+        deleteValidation(driverId, driverName);
+    }
     // Função para selecionar todos os checkboxes que não estão marcados e não estão desativados
     function selectAll() {
         const checkboxes = document.querySelectorAll('input[type="checkbox"]:not(:checked):not(:disabled)');
@@ -110,6 +180,16 @@
     checkboxes.forEach((checkbox) => {
         checkbox.addEventListener('change', checkCheckedCheckboxes);
     });
+
+    $(function() {
+        $('[data-toggle="popover"]').popover()
+
+        $(document).on('click', '.btn-delete-validation', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            deleteValidationFromElement(this);
+        });
+    })
 
 </script>
 @endsection
@@ -228,9 +308,15 @@
                         @else
                         <td style="text-align: right">{{ number_format($driver->final_total_balance, 2) }} <small>€</small></td>
                         @endif
-                        <td style="text-align: right">
+                        <td style="text-align: right" class="validation-cell">
                             <div class="checkbox">
-                                <label>
+                                <label class="validation-label">
+                                    @if ($driver->current_account)
+                                    <i class="fa fa-trash btn-delete-validation"
+                                        title="Reverter validação"
+                                        data-driver-id="{{ $driver->id }}"
+                                        data-driver-name="{{ $driver->name }}"></i>
+                                    @endif
                                     <input type="checkbox" value="{{ json_encode($driver) }}" {{
                                         $driver->current_account ? 'checked disabled' : '' }}><span class="glyphicon glyphicon-ok green-checkmark {{ $driver->current_account ? 'verified' : 'unverified' }}"></span>
                                 </label>
@@ -296,12 +382,5 @@
 @endif
 </div>
 @endsection
-@section('scripts')
-<script>
-    $(function() {
-        $('[data-toggle="popover"]').popover()
-    })
-
-</script>
-@endsection
 <script>console.log({!! $drivers !!})</script>
+

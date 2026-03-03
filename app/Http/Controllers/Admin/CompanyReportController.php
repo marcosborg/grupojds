@@ -83,7 +83,6 @@ class CompanyReportController extends Controller
     public function revalidateData(Request $request)
     {
         $driver_id = $request->driver_id;
-        $company_id = Driver::find($driver_id)->company_id;
         $tvde_week_id = $request->tvde_week_id;
         $data = $request->data;
 
@@ -112,6 +111,30 @@ class CompanyReportController extends Controller
         $driver_balance->drivers_balance = $last_balance ? $last_balance->balance + $data['driver']['total'] : $data['driver']['total'];
         $driver_balance->save();
 
+    }
+
+    public function deleteValidation(Request $request)
+    {
+        abort_if(Gate::denies('company_report_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
+        $request->validate([
+            'driver_id' => ['required', 'integer', 'exists:drivers,id'],
+            'tvde_week_id' => ['required', 'integer', 'exists:tvde_weeks,id'],
+        ]);
+
+        CurrentAccount::where([
+            'driver_id' => $request->driver_id,
+            'tvde_week_id' => $request->tvde_week_id,
+        ])->delete();
+
+        DriversBalance::where([
+            'driver_id' => $request->driver_id,
+            'tvde_week_id' => $request->tvde_week_id,
+        ])->delete();
+
+        return response()->json([
+            'message' => 'Validacao revertida com sucesso.',
+        ]);
     }
 
 }
